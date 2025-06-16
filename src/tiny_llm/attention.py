@@ -1,5 +1,6 @@
 import mlx.core as mx
 from .basics import softmax, linear
+import einops
 
 
 def scaled_dot_product_attention_simple(
@@ -9,7 +10,17 @@ def scaled_dot_product_attention_simple(
     scale: float | None = None,
     mask: mx.array | None = None,
 ) -> mx.array:
-    pass
+    if scale is None:
+        scale = mx.rsqrt(query.shape[-1])
+    if mask is None:
+        mask = mx.zeros_like(mx.matmul(query, mx.einsum("... L D -> ... D L", key)))
+    return mx.matmul(
+        softmax(
+            mx.matmul(query, mx.einsum("... L D -> ... D L", key)) * scale + mask,
+            axis=-1,
+        ),
+        value,
+    )
 
 
 class SimpleMultiHeadAttention:
@@ -22,7 +33,13 @@ class SimpleMultiHeadAttention:
         wv: mx.array,
         wo: mx.array,
     ):
-        pass
+        self.hidden_size = hidden_size
+        self.num_heads = num_heads
+        self.dim = hidden_size // num_heads
+        self.wq = wq
+        self.wk = wk
+        self.wv = wv
+        self.wo = wo
 
     def __call__(
         self,
@@ -31,7 +48,26 @@ class SimpleMultiHeadAttention:
         value: mx.array,
         mask: mx.array | None = None,
     ) -> mx.array:
-        pass
+        N, L, _ = query.shape
+        q = (
+            linear(query, self.wq)
+            .reshape(N, L, self.num_heads, self.dim)
+            .transpose(0, 2, 1, 3)
+        )
+        k = (
+            linear(key, self.wk)
+            .reshape(N, L, self.num_heads, self.dim)
+            .transpose(0, 2, 1, 3)
+        )
+        v = (
+            linear(value, self.wv)
+            .reshape(N, L, self.num_heads, self.dim)
+            .transpose(0, 2, 1, 3)
+        )
+        attn = scaled_dot_product_attention_simple(q, k, v, mask=mask)
+        return linear(
+            attn.transpose(0, 2, 1, 3).reshape(N, L, self.hidden_size), self.wo
+        )
 
 
 def causal_mask(L: int, S: int, dtype: mx.Dtype) -> mx.array:
