@@ -30,11 +30,11 @@ class RoPE:
             self.cosine_freqs[:L, :]
             if offset is None
             else self.cosine_freqs[offset, :],
-            (1, L, 1, D // 2),
+            (-1, L, 1, D // 2),
         )
         sine_basis = mx.reshape(
             self.sine_freqs[:L, :] if offset is None else self.sine_freqs[offset, :],
-            (1, L, 1, D // 2),
+            (-1, L, 1, D // 2),
         )
         if self.traditional:
             x = x.reshape(N, L, H, D // 2, 2)

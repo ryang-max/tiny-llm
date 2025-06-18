@@ -25,7 +25,7 @@ def assert_allclose(
         atol = atol or 1.0e-5
     assert a.shape == b.shape, f"shape mismatch: {a.shape} vs {b.shape}"
     if not np.allclose(a, b, rtol=rtol, atol=atol):
-        with np.printoptions(precision=3, suppress=True):
+        with np.printoptions(precision=5, suppress=True):
             print("a=", a)
             print("b=", b)
             diff = np.invert(np.isclose(a, b, rtol=rtol, atol=atol))

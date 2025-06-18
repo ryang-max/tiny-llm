@@ -2,6 +2,9 @@ import pytest
 import mlx.core as mx
 from .tiny_llm_base import *
 from .utils import *
+from mlx_lm import load
+from .tiny_llm_base import qwen2_week1
+from .tiny_llm_base import dequantize_linear
 
 
 def grouped_attention_helper(
@@ -130,6 +133,39 @@ def test_task_2_grouped_attention_causal_mask(
 ):
     grouped_attention_helper(stream, precision, batch_dimension, scale, True)
 
-
+@pytest.mark.skipif(
+    not qwen_2_05b_model_exists(), reason="Qwen2-0.5B-Instruct-MLX model not found"
+)
 def test_task_3_qwen2_grouped_query_attention():
-    pass
+    mlx_model, _ = load("Qwen/Qwen2-0.5B-Instruct-MLX")
+    print(mlx_model.args)
+    #print(mlx_model.model)
+    wq = dequantize_linear(mlx_model.model.layers[0].self_attn.q_proj).astype(mx.float16)
+    wk = dequantize_linear(mlx_model.model.layers[0].self_attn.k_proj).astype(mx.float16)
+    wv = dequantize_linear(mlx_model.model.layers[0].self_attn.v_proj).astype(mx.float16)
+    wo = dequantize_linear(mlx_model.model.layers[0].self_attn.o_proj).astype(mx.float16)
+    bq=mlx_model.model.layers[0].self_attn.q_proj.bias.astype(mx.float16)
+    bk=mlx_model.model.layers[0].self_attn.k_proj.bias.astype(mx.float16)
+    bv=mlx_model.model.layers[0].self_attn.v_proj.bias.astype(mx.float16)
+    attention = qwen2_week1.Qwen2MultiHeadAttention(
+        mlx_model.args.hidden_size,
+        mlx_model.args.num_attention_heads,
+        mlx_model.args.num_key_value_heads,
+        wq=wq,
+        wk=wk,
+        wv=wv,
+        wo=wo,
+        bq=bq,
+        bk=bk,
+        bv=bv,
+        max_seq_len=mlx_model.args.max_position_embeddings,
+        theta=mlx_model.args.rope_theta
+    )
+    input = mx.random.uniform(shape=(1, 100, mlx_model.args.hidden_size), dtype=mx.float16)
+    res_impl = attention(input, 0)
+    res_ref = mlx_model.model.layers[0].self_attn(input)
+    assert_allclose(res_impl, res_ref, precision=mx.float16)
+
+    # raise NotImplementedError(
+    #     "This test is not implemented yet. Please implement the test for Qwen2-0.5B-Instruct-MLX."
+    # )

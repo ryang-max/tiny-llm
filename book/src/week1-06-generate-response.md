@@ -74,4 +74,3 @@ It should gives you a reasonable response of "what is a large language model". R
 `--solution ref` to use the reference solution.
 
 {{#include copyright.md}}
-

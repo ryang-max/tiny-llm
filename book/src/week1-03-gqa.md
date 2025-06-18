@@ -22,7 +22,7 @@ In this task, we will implement the grouped scaled dot product attention functio
 
 Implement `scaled_dot_product_attention_grouped` in `src/tiny_llm/attention.py`. This function is similar to the standard scaled dot product attention, but handles the case where the number of query heads is a multiple of the number of key/value heads.
 
-The main progress is the same as the standard scaled dot product attention. The difference is that the K and V heads are shared across multiple Q heads. This means that instead of having `H_q` separate K and V heads, we have `H` K and V heads, and each K and V head is shared by `n_repeats = H_q // H` Q heads.  
+The main progress is the same as the standard scaled dot product attention. The difference is that the K and V heads are shared across multiple Q heads. This means that instead of having `H_q` separate K and V heads, we have `H` K and V heads, and each K and V head is shared by `n_repeats = H_q // H` Q heads.
 
 The core idea is to reshape `query`, `key`, and `value` so that the K and V tensors can be effectively broadcasted to match the query heads within their groups during the `matmul` operations.
     *   Think about how to isolate the `H` and `n_repeats` dimensions in the `query` tensor.

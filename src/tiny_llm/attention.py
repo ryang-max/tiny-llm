@@ -71,7 +71,9 @@ class SimpleMultiHeadAttention:
 
 
 def causal_mask(L: int, S: int, dtype: mx.Dtype) -> mx.array:
-    pass
+    mask = mx.full([L, S], -mx.inf, dtype=dtype)
+    print(f"mask shape: {mask.shape}, dtype: {mask.dtype}")
+    return mx.triu(mask, k=1 + max(0, S - L))
 
 
 def scaled_dot_product_attention_grouped(
@@ -81,7 +83,23 @@ def scaled_dot_product_attention_grouped(
     scale: float | None = None,
     mask: mx.array | str | None = None,
 ) -> mx.array:
-    pass
+    H_q, L, D = query.shape[-3:]
+    H, S, _ = key.shape[-3:]
+    assert H_q % H == 0, "Query heads must be a multiple of key heads"
+    n_repeats = H_q // H
+    query = query.reshape(*query.shape[:-3], H, n_repeats, L, D)
+    key = key.reshape(*key.shape[:-3], H, 1, S, D)
+    value = value.reshape(*value.shape[:-3], H, 1, S, D)
+    if isinstance(mask, mx.array):
+        mask = mask.reshape(*mask.shape[:-3], H, n_repeats, L, S)
+    elif isinstance(mask, str) and mask == "causal":
+        mask = causal_mask(L, S, query.dtype)
+        mask = mask.reshape(*((1,) * (len(query.shape) - 2)), L, S)
+        print(f"mask final shape: {mask.shape}, dtype: {mask.dtype}")
+    attn = scaled_dot_product_attention_simple(
+        query, key, value, scale=scale, mask=mask
+    )
+    return attn.flatten(-4, -3)
 
 
 def flash_attention(

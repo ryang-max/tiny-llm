@@ -122,7 +122,7 @@ Qwen2TransformerBlock
 | (N.. x hidden_size)
 ...
 |
-RMSNorm 
+RMSNorm
 | (N.. x hidden_size)
 Embedding::as_linear  OR  Linear (lm_head)
 | (N.. x vocab_size)
