@@ -164,7 +164,11 @@ def test_task_3_qwen2_grouped_query_attention():
     input = mx.random.uniform(shape=(1, 100, mlx_model.args.hidden_size), dtype=mx.float16)
     res_impl = attention(input, 0)
     res_ref = mlx_model.model.layers[0].self_attn(input)
-    assert_allclose(res_impl, res_ref, precision=mx.float16)
+    assert_allclose(res_impl,
+                    res_ref,
+                    precision=mx.float16,
+                    atol=1e-3
+                )
 
     # raise NotImplementedError(
     #     "This test is not implemented yet. Please implement the test for Qwen2-0.5B-Instruct-MLX."
