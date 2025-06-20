@@ -47,7 +47,7 @@ class RoPE:
             x_1 = x[..., D // 2 :]
             output_0 = mx.multiply(x_0, cosine_basis) - mx.multiply(x_1, sine_basis)
             output_1 = mx.multiply(x_1, cosine_basis) + mx.multiply(x_0, sine_basis)
-        print(f"output_0 shape: {output_0.shape}, output_1 shape: {output_1.shape}")
+        #print(f"output_0 shape: {output_0.shape}, output_1 shape: {output_1.shape}")
         if self.traditional:
             output = mx.stack((output_0, output_1), axis=-1)
         else:
