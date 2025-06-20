@@ -38,6 +38,41 @@ def helper_test_task_3(model_name: str, iters: int = 10):
         ref_output = ref_output - mx.logsumexp(ref_output, keepdims=True)
         assert_allclose(user_output, ref_output, precision=mx.float16, rtol=1e-1)
 
+def helper_test_task1(model_name: str, iters: int = 10):
+    mlx_model, tokenizer = load(model_name)
+    transformer = qwen2_week1.Qwen2TransformerBlock(
+        num_attention_heads=mlx_model.args.num_attention_heads,
+        num_kv_heads=mlx_model.args.num_key_value_heads,
+        hidden_size=mlx_model.args.hidden_size,
+        intermediate_size=mlx_model.args.intermediate_size,
+        rms_norm_eps=mlx_model.args.rms_norm_eps,
+        wq=dequantize_linear(mlx_model.model.layers[0].self_attn.q_proj).astype(mx.float16),
+        wk=dequantize_linear(mlx_model.model.layers[0].self_attn.k_proj).astype(mx.float16),
+        wv=dequantize_linear(mlx_model.model.layers[0].self_attn.v_proj).astype(mx.float16),
+        wo=dequantize_linear(mlx_model.model.layers[0].self_attn.o_proj).astype(mx.float16),
+        bq=mlx_model.model.layers[0].self_attn.q_proj.bias.astype(mx.float16),
+        bk=mlx_model.model.layers[0].self_attn.k_proj.bias.astype(mx.float16),
+        bv=mlx_model.model.layers[0].self_attn.v_proj.bias.astype(mx.float16),
+        w_gate=dequantize_linear(mlx_model.model.layers[0].mlp.gate_proj).astype(mx.float16),
+        w_up=dequantize_linear(mlx_model.model.layers[0].mlp.up_proj).astype(mx.float16),
+        w_down=dequantize_linear(mlx_model.model.layers[0].mlp.down_proj).astype(mx.float16),
+        w_input_layernorm=mlx_model.model.layers[0].input_layernorm.weight.astype(mx.float16),
+        w_post_attention_layernorm=mlx_model.model.layers[0].post_attention_layernorm.weight.astype(mx.float16),
+    )
+    for _ in range(iters):
+        input = mx.random.randint(low=0, high=mlx_model.args.hidden_size, shape=(1, 100, mlx_model.args.hidden_size))
+        user_output = transformer(input, 0)
+        #user_output = user_output - mx.logsumexp(user_output, keepdims=True)
+        ref_output = mlx_model.model.layers[0](input)
+        #ref_output = ref_output - mx.logsumexp(ref_output, keepdims=True)
+        assert_allclose(user_output, ref_output, precision=mx.float16, rtol=1e-1)
+
+@pytest.mark.skipif(
+    not qwen_2_05b_model_exists(), reason="Qwen2-0.5B-Instruct-MLX model not found"
+)
+def test_task_1_qwen_2_05b():
+    helper_test_task1("Qwen/Qwen2-0.5B-Instruct-MLX", 3)
+
 
 @pytest.mark.skipif(
     not qwen_2_05b_model_exists(), reason="Qwen2-0.5B-Instruct-MLX model not found"
@@ -54,7 +89,6 @@ def test_task_2_embedding_call():
         user_output = embedding(input)
         ref_output = mlx_model.model.embed_tokens(input)
         assert_allclose(user_output, ref_output, precision=mx.float16)
-
 
 @pytest.mark.skipif(
     not qwen_2_05b_model_exists(), reason="Qwen2-0.5B-Instruct-MLX model not found"
